@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vecro — Agent Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #0c0c0e;
+    --bg-1:        #111114;
+    --bg-2:        #17171c;
+    --bg-3:        #1d1d24;
+    --border:      #2a2a35;
+    --border-s:    #222230;
+    --text:        #eeeef3;
+    --text-dim:    #9a9baa;
+    --text-faint:  #565665;
+    --gold:        #c9a84c;
+    --gold-bright: #e8c46a;
+    --gold-dim:    #8a6b2a;
+    --gold-soft:   rgba(201,168,76,.12);
+    --red:         #b03232;
+    --warn:        #d8973a;
+    --danger:      #e05050;
+    --radius:      10px;
+    --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    --serif: "Cinzel", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ── HERO BANNER ── */
+  .hero-banner {
+    position: relative;
+    overflow: hidden;
+    height: 56px;
+    flex: none;
+    background: linear-gradient(90deg, #0c0c0e 0%, #141414 40%, #1a1208 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+  }
+  .hero-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('banautop.png') center/cover no-repeat;
+    opacity: 0.22;
+    filter: saturate(0.6) brightness(0.7);
+  }
+  .hero-banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #0c0c0e 0%, rgba(12,12,14,.7) 30%, rgba(12,12,14,.2) 60%, #0c0c0e 100%);
+  }
+
+  .topbar {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+
+  /* VECRO LOGO */
+  .vecro-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .vecro-bird {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    filter: drop-shadow(0 0 6px rgba(201,168,76,.5));
+  }
+  .vecro-wordmark {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+  .vecro-sub {
+    font-family: var(--sans);
+    font-size: 9px;
+    font-weight: 300;
+    letter-spacing: 2px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+  }
+  .vecro-name {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--gold-bright);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .model-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    background: var(--bg-2);
+    border: 1px solid var(--border-s);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text-faint);
+    transition: background .2s;
+  }
+  .status-dot.busy { background: var(--warn); animation: pulse 1.1s ease-in-out infinite; }
+  .status-dot.idle { background: var(--gold); box-shadow: 0 0 6px var(--gold-dim); }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(216,151,58,.5); }
+    50%      { box-shadow: 0 0 0 4px rgba(216,151,58,0); }
+  }
+  .status-label { font-size: 12px; color: var(--text-dim); min-width: 80px; text-align: right; }
+
+  .ctrl-btns { display: flex; gap: 6px; }
+  .icon-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: transparent;
+    border: 1px solid var(--border-s);
+    color: var(--text-dim);
+    font-size: 11.5px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: var(--sans);
+  }
+  .icon-btn:hover { background: var(--bg-2); color: var(--text); border-color: var(--border); }
+  .icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+  .icon-btn.gold:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas:
+      "topbar topbar"
+      "main   side";
+    height: 100vh;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; min-height: 0;
+    border-right: 1px solid var(--border-s);
+  }
+
+  .chat-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0 16px;
+    scroll-behavior: smooth;
+  }
+  .chat-scroll::-webkit-scrollbar { width: 6px; }
+  .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+  .chat-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  .chat-inner {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 0 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* EMPTY STATE — full Vecro hero */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 0 60px;
+    gap: 0;
+  }
+  .empty-hero-img {
+    width: 180px;
+    height: 180px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 24px rgba(201,168,76,.35));
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-8px); }
+  }
+  .empty-tagline {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+  .empty-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--gold-bright);
+    text-transform: uppercase;
+    margin-top: 4px;
+    text-shadow: 0 0 30px rgba(201,168,76,.4);
+  }
+  .empty-motto {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-top: 10px;
+    letter-spacing: 0.5px;
+  }
+  .empty-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 20px;
+    max-width: 360px;
+    line-height: 1.6;
+  }
+  .gold-rule {
+    width: 80px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 18px auto 0;
+  }
+
+  /* MESSAGES */
+  .msg { display: flex; gap: 12px; align-items: flex-start; }
+  .msg .avatar {
+    flex: none;
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-top: 2px;
+    font-family: var(--serif);
+    letter-spacing: 1px;
+  }
+  .msg.user .avatar    { background: var(--bg-3); color: var(--text-dim); border: 1px solid var(--border); }
+  .msg.assistant .avatar {
+    background: linear-gradient(135deg, var(--gold-dim), #5a4010);
+    color: var(--gold-bright);
+    border: 1px solid var(--gold-dim);
+    font-size: 10px;
+  }
+  .msg-body { flex: 1; min-width: 0; padding-top: 3px; }
+  .msg-role {
+    font-size: 10px; color: var(--text-faint); margin-bottom: 5px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;
+    font-family: var(--mono);
+  }
+  .msg.assistant .msg-role { color: var(--gold-dim); }
+  .msg-content {
+    white-space: pre-wrap; word-wrap: break-word;
+    line-height: 1.6; color: var(--text);
+  }
+  .msg-content code {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--bg-3); padding: 2px 5px; border-radius: 4px;
+    color: var(--gold);
+  }
+  .msg.user .msg-content { color: #d8d9e3; }
+
+  .cursor-blink {
+    display: inline-block; width: 7px; height: 14px;
+    background: var(--gold); margin-left: 2px; vertical-align: text-bottom;
+    animation: blink 1s step-start infinite;
+    border-radius: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* THINKING BLOCK */
+  .thinking-block {
+    border: 1px solid var(--border-s);
+    background: var(--bg-2);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .thinking-toggle {
+    display: flex; align-items: center; gap: 7px;
+    width: 100%; background: transparent; border: none;
+    color: var(--text-dim);
+    font-family: var(--sans); font-size: 11.5px; font-weight: 600;
+    padding: 7px 12px; cursor: pointer; text-align: left;
+  }
+  .thinking-toggle:hover { color: var(--text); }
+  .thinking-toggle .chev { display: inline-block; transition: transform .15s; font-size: 9px; color: var(--text-faint); }
+  .thinking-block.open .thinking-toggle .chev { transform: rotate(90deg); }
+  .thinking-toggle .spin {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid var(--warn); border-top-color: transparent;
+    animation: spin .7s linear infinite; flex: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .thinking-body { display: none; padding: 0 12px 10px; border-top: 1px solid var(--border-s); }
+  .thinking-block.open .thinking-body { display: block; }
+  .thinking-item { padding-top: 9px; }
+  .thinking-item .ti-head { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text-dim); }
+  .thinking-item.tool   .ti-head { color: #7cb8ff; }
+  .thinking-item.result .ti-head { color: var(--gold); }
+  .thinking-item.info   .ti-head { color: var(--warn); }
+  .thinking-item .ti-body { margin: 4px 0 0 13px; font-family: var(--mono); font-size: 11px; color: var(--text-faint); white-space: pre-wrap; word-break: break-word; }
+  .dot-icon { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* ── COMPOSER ── */
+  .composer {
+    border-top: 1px solid var(--border-s);
+    padding: 14px 24px 18px;
+    background: var(--bg-1);
+    position: relative;
+  }
+  .composer-inner { max-width: 740px; margin: 0 auto; }
+  .composer-box {
+    display: flex; align-items: flex-end; gap: 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
+    transition: border-color .15s;
+  }
+  .composer-box:focus-within { border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,168,76,.08); }
+
+  textarea#composer-input {
+    flex: 1; resize: none; border: none; outline: none;
+    background: transparent; color: var(--text);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    max-height: 200px; padding: 4px 0;
+  }
+  textarea#composer-input::placeholder { color: var(--text-faint); }
+
+  .send-btn {
+    flex: none; width: 34px; height: 34px; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+    color: #1a0f00;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s;
+    box-shadow: 0 2px 8px rgba(201,168,76,.25);
+  }
+  .send-btn:hover { background: linear-gradient(135deg, var(--gold-bright), var(--gold)); transform: scale(1.04); }
+  .send-btn:disabled { background: var(--bg-2); color: var(--text-faint); cursor: not-allowed; box-shadow: none; transform: none; }
+  .send-btn:active { transform: scale(.94); }
+
+  .composer-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 8px; padding: 0 2px;
+  }
+  .mode-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+  .switch {
+    position: relative; width: 34px; height: 19px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 999px; cursor: pointer; flex: none;
+    transition: background .15s, border-color .15s;
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 1px; left: 1px;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--text-faint); transition: transform .18s, background .15s;
+  }
+  .switch.on { background: var(--gold-soft); border-color: var(--gold-dim); }
+  .switch.on::after { transform: translateX(15px); background: var(--gold); }
+  .hint { font-size: 11px; color: var(--text-faint); }
+
+  /* ── SIDEBAR ── */
+  .side {
+    grid-area: side;
+    background: var(--bg-1);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+
+  /* SIDE HERO */
+  .side-hero {
+    position: relative;
+    height: 110px;
+    overflow: hidden;
+    flex: none;
+    border-bottom: 1px solid var(--border-s);
+  }
+  .side-hero-bg {
+    position: absolute; inset: 0;
+    background: url('logo.png') center/cover no-repeat;
+    opacity: 0.18;
+    filter: saturate(0.4) brightness(0.5);
+  }
+  .side-hero-content {
+    position: relative; z-index: 2;
+    padding: 16px 16px 0;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    height: 100%;
+  }
+  .side-tg {
+    display: flex; align-items: center; gap: 8px;
+    padding-bottom: 12px;
+  }
+  .side-tg-icon {
+    width: 36px; height: 36px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 50%;
+    overflow: hidden;
+    flex: none;
+    filter: drop-shadow(0 0 5px rgba(201,168,76,.3));
+  }
+  .side-tg-icon img { width: 100%; height: 100%; object-fit: cover; }
+  .side-tg-info { flex: 1; min-width: 0; }
+  .side-tg-name { font-family: var(--serif); font-size: 13px; color: var(--gold-bright); font-weight: 600; letter-spacing: 1px; }
+  .side-tg-desc { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-family: var(--mono); }
+
+  .side-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border-s); }
+  .side-header h3 { font-family: var(--serif); font-size: 11px; font-weight: 600; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; }
+  .side-header p { margin: 5px 0 0; font-size: 11px; color: var(--text-faint); line-height: 1.5; }
+
+  .tool-list { flex: 1; overflow-y: auto; padding: 8px 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+  .tool-list::-webkit-scrollbar { width: 4px; }
+  .tool-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  .tool-item {
+    border: 1px solid var(--border-s);
+    background: var(--bg);
+    border-radius: 8px; padding: 9px 11px;
+    transition: border-color .15s;
+  }
+  .tool-item.disabled { opacity: .45; }
+  .tool-item:hover { border-color: var(--gold-dim); }
+  .tool-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tool-name { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--text); }
+  .tool-desc { font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
+  .tool-params { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-top: 5px; }
+  .tool-params span { background: var(--bg-2); padding: 1px 5px; border-radius: 4px; margin-right: 4px; display: inline-block; margin-top: 3px; }
+
+  .side-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border-s);
+    font-size: 11px; color: var(--text-faint);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .ctx-bar { height: 3px; background: var(--bg-3); border-radius: 99px; overflow: hidden; margin-top: 5px; }
+  .ctx-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); width: 0%; transition: width .3s; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-3); border: 1px solid var(--gold-dim);
+    color: var(--gold); font-size: 12px; padding: 8px 18px; border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.5);
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    z-index: 100; font-family: var(--mono); letter-spacing: .5px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- TOP BAR (inside hero banner) -->
+  <div class="hero-banner">
+    <div class="topbar">
+      <div class="topbar-left">
+        <a class="vecro-logo" href="#">
+          <!-- Inline SVG bird (trimmed key paths for logo size) -->
+          <img src="tg.svg" class="vecro-bird" alt="Vecro" />
+          <div class="vecro-wordmark">
+            <span class="vecro-sub">Multiverse</span>
+            <span class="vecro-name">Vecro</span>
+          </div>
+        </a>
+        <div class="model-pill" id="model-pill">…</div>
+      </div>
+      <div class="topbar-right">
+        <div class="ctrl-btns">
+          <button class="icon-btn" id="btn-pause">⏸ Пауза</button>
+          <button class="icon-btn" id="btn-resume" disabled>▶ Продолжить</button>
+          <button class="icon-btn danger" id="btn-abort">⏹ Стоп</button>
+          <button class="icon-btn danger" id="btn-stopgen">✕ Esc</button>
+        </div>
+        <div class="status-label" id="status-label">готов</div>
+        <div class="status-dot idle" id="status-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="main">
+    <div class="chat-scroll" id="chat-scroll">
+      <div class="chat-inner" id="chat-inner">
+        <div class="empty-state" id="empty-state">
+          <img src="logo.png" class="empty-hero-img" alt="Vecro Multiverse" />
+          <div class="empty-tagline">Знание — сила</div>
+          <div class="empty-title">Vecro</div>
+          <div class="empty-motto">Multiverse Agent Console</div>
+          <div class="gold-rule"></div>
+          <div class="empty-desc">
+            Агент готов к работе. Напиши сообщение ниже.
+            Инструменты можно включать и выключать в панели справа.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="composer-box">
+          <textarea id="composer-input" rows="1" placeholder="Напишите сообщение агенту…"></textarea>
+          <button class="send-btn" id="send-btn" title="Отправить (Enter)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M4 12L20 4L13 20L11 13L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="composer-foot">
+          <div class="mode-toggle">
+            <div class="switch" id="autopilot-switch"></div>
+            <span>autopilot</span>
+          </div>
+          <div class="hint" id="foot-hint">Enter — отправить · Shift+Enter — новая строка</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="side">
+    <!-- Vecro Telegram card -->
+    <div class="side-hero">
+      <div class="side-hero-bg"></div>
+      <div class="side-hero-content">
+        <div class="side-tg">
+          <div class="side-tg-icon">
+            <img src="tg.png" alt="Vecro TG" />
+          </div>
+          <div class="side-tg-info">
+            <div class="side-tg-name">Vecro</div>
+            <div class="side-tg-desc">multiverse · agent console</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-header">
+      <h3>Инструменты агента</h3>
+      <p>Выключенный инструмент модель не увидит и не сможет вызвать.</p>
+    </div>
+    <div class="tool-list" id="tool-list"></div>
+    <div class="side-footer">
+      <div id="ctx-label">контекст: — / —</div>
+      <div class="ctx-bar"><div class="ctx-bar-fill" id="ctx-fill"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const chatInner   = document.getElementById('chat-inner');
+const chatScroll  = document.getElementById('chat-scroll');
+const emptyState  = document.getElementById('empty-state');
+const input       = document.getElementById('composer-input');
+const sendBtn     = document.getElementById('send-btn');
+const autopilotSw = document.getElementById('autopilot-switch');
+const statusDot   = document.getElementById('status-dot');
+const statusLabel = document.getElementById('status-label');
+const modelPill   = document.getElementById('model-pill');
+const toast       = document.getElementById('toast');
+const footHint    = document.getElementById('foot-hint');
+const btnPause    = document.getElementById('btn-pause');
+const btnResume   = document.getElementById('btn-resume');
+const btnAbort    = document.getElementById('btn-abort');
+const btnStopGen  = document.getElementById('btn-stopgen');
+
+let autopilotMode = false;
+let busy = false;
+
+function showToast(text){
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> toast.classList.remove('show'), 2600);
+}
+
+const AUTOSCROLL_THRESHOLD = 80;
+function isNearBottom(){ return chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight < AUTOSCROLL_THRESHOLD; }
+function scrollToBottom(force){ if (force || isNearBottom()) chatScroll.scrollTop = chatScroll.scrollHeight; }
+function hideEmptyState(){ if (emptyState) emptyState.remove(); }
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function addMessage(role, text){
+  hideEmptyState();
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  const initial = role === 'user' ? 'Ты' : 'V';
+  wrap.innerHTML = `
+    <div class="avatar">${initial}</div>
+    <div class="msg-body">
+      <div class="msg-role">${role === 'user' ? 'Вы' : 'Агент'}</div>
+      <div class="msg-content"></div>
+    </div>`;
+  wrap.querySelector('.msg-content').textContent = text;
+  chatInner.appendChild(wrap);
+  scrollToBottom(true);
+  return wrap.querySelector('.msg-content');
+}
+
+function addAssistantNode(){
+  hideEmptyState();
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `
+    <div class="avatar">V</div>
+    <div class="msg-body">
+      <div class="msg-role">Агент</div>
+      <div class="thinking-block" style="display:none">
+        <button type="button" class="thinking-toggle">
+          <span class="spin"></span>
+          <span class="chev">▶</span>
+          <span class="tt-label">ход мыслей</span>
+        </button>
+        <div class="thinking-body"></div>
+      </div>
+      <div class="msg-content"><span class="stream-text"></span><span class="cursor-blink" style="display:none"></span></div>
+    </div>`;
+  const toggle = wrap.querySelector('.thinking-toggle');
+  const block  = wrap.querySelector('.thinking-block');
+  toggle.addEventListener('click', () => block.classList.toggle('open'));
+  chatInner.appendChild(wrap);
+  scrollToBottom(true);
+  return wrap;
+}
+
+function addThinkingItem(assistantNode, kind, title, body){
+  const block = assistantNode.querySelector('.thinking-block');
+  const container = block.querySelector('.thinking-body');
+  block.style.display = '';
+  const item = document.createElement('div');
+  item.className = 'thinking-item ' + kind;
+  item.innerHTML = `
+    <div class="ti-head"><span class="dot-icon"></span><span></span></div>
+    ${body ? `<div class="ti-body"></div>` : ''}`;
+  item.querySelector('.ti-head span:last-child').textContent = title;
+  if (body) item.querySelector('.ti-body').textContent = body;
+  container.appendChild(item);
+  scrollToBottom();
+}
+
+function setThinkingDone(assistantNode){
+  const spin = assistantNode.querySelector('.thinking-toggle .spin');
+  if (spin) spin.remove();
+}
+
+function setBusy(state){
+  busy = state;
+  sendBtn.disabled = state;
+  statusDot.className = 'status-dot ' + (state ? 'busy' : 'idle');
+  statusLabel.textContent = state ? 'генерация…' : 'готов';
+  btnResume.disabled = !state;
+  btnAbort.disabled  = !state;
+  btnStopGen.disabled = !state;
+}
+setBusy(false);
+
+autopilotSw.addEventListener('click', () => {
+  autopilotMode = !autopilotMode;
+  autopilotSw.classList.toggle('on', autopilotMode);
+  footHint.textContent = autopilotMode
+    ? 'autopilot: агент сам продолжит шаги до <task_complete>'
+    : 'Enter — отправить · Shift+Enter — новая строка';
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+});
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); trySend(); }
+});
+sendBtn.addEventListener('click', trySend);
+
+async function trySend(){
+  const text = input.value.trim();
+  if (!text) return;
+  if (busy){
+    await fetch('/api/control/steer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+    showToast('steer: сообщение поставлено в очередь');
+    input.value = ''; input.style.height='auto';
+    return;
+  }
+  addMessage('user', text);
+  input.value = ''; input.style.height = 'auto';
+  const mode = autopilotMode ? 'autopilot' : 'chat';
+  const resp = await fetch('/api/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, mode}) });
+  const data = await resp.json();
+  if (!resp.ok){ showToast(data.error || 'ошибка отправки'); return; }
+  setBusy(true);
+  attachStream(data.job_id);
+}
+
+function attachStream(jobId){
+  const es = new EventSource('/api/stream/' + jobId);
+  let node = null, textSpan = null, cursor = null, buffer = '';
+  function ensureNode(){
+    if (!node){
+      node = addAssistantNode();
+      textSpan = node.querySelector('.stream-text');
+      cursor   = node.querySelector('.cursor-blink');
+      cursor.style.display = '';
+    }
+    return node;
+  }
+  es.onmessage = (e) => {
+    let ev; try { ev = JSON.parse(e.data); } catch { return; }
+    if (ev.type === 'delta'){
+      ensureNode(); buffer += ev.text; textSpan.textContent = buffer; scrollToBottom();
+    } else if (ev.type === 'tool_call'){
+      ensureNode();
+      const argsStr = Object.entries(ev.args || {}).map(([k,v]) => `${k}=${v}`).join(', ');
+      addThinkingItem(node, 'tool', `🔧 ${ev.name}(${argsStr})`, null);
+    } else if (ev.type === 'tool_result'){
+      ensureNode();
+      const preview = (ev.result || '').length > 500 ? ev.result.slice(0,500)+'…' : ev.result;
+      addThinkingItem(node, 'result', `↳ результат: ${ev.name}`, preview);
+    } else if (ev.type === 'info'){
+      ensureNode(); addThinkingItem(node, 'info', ev.text, null);
+    } else if (ev.type === 'final'){
+      ensureNode(); if (ev.text) textSpan.textContent = ev.text; if (cursor) cursor.remove();
+      setThinkingDone(node); scrollToBottom();
+    } else if (ev.type === 'error'){
+      ensureNode(); addThinkingItem(node, 'info', 'ошибка', ev.text); setThinkingDone(node);
+    } else if (ev.type === 'done'){
+      if (node) setThinkingDone(node); setBusy(false); refreshContext(); es.close();
+    }
+  };
+  es.onerror = () => { if (node) setThinkingDone(node); es.close(); setBusy(false); };
+}
+
+btnPause.addEventListener('click',   async () => { await fetch('/api/control/pause',  {method:'POST'}); showToast('пауза запрошена'); });
+btnResume.addEventListener('click',  async () => { await fetch('/api/control/resume', {method:'POST'}); showToast('продолжение запрошено'); });
+btnAbort.addEventListener('click',   async () => { await fetch('/api/control/abort',  {method:'POST'}); showToast('прерывание запрошено'); });
+btnStopGen.addEventListener('click', async () => { await fetch('/api/control/stop',   {method:'POST'}); showToast('генерация останавливается…'); });
+
+async function loadTools(){
+  try {
+    const resp = await fetch('/api/tools');
+    const data = await resp.json();
+    const list = document.getElementById('tool-list');
+    list.innerHTML = '';
+    for (const t of data.tools){
+      const item = document.createElement('div');
+      item.className = 'tool-item' + (t.enabled ? '' : ' disabled');
+      const paramsHtml = t.params.length
+        ? `<div class="tool-params">${t.params.map(p=>`<span>${p.name}${p.required?'':'?'}: ${p.type}</span>`).join('')}</div>` : '';
+      item.innerHTML = `
+        <div class="tool-row">
+          <div class="tool-name">${escapeHtml(t.name)}</div>
+          <div class="switch ${t.enabled?'on':''}" data-tool="${escapeHtml(t.name)}"></div>
+        </div>
+        <div class="tool-desc">${escapeHtml(t.description||'(без описания)')}</div>
+        ${paramsHtml}`;
+      list.appendChild(item);
+    }
+    list.querySelectorAll('.switch[data-tool]').forEach(sw => {
+      sw.addEventListener('click', async () => {
+        const name = sw.dataset.tool;
+        const enabled = !sw.classList.contains('on');
+        const resp = await fetch(`/api/tools/${encodeURIComponent(name)}/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enabled})});
+        if (resp.ok){ sw.classList.toggle('on', enabled); sw.closest('.tool-item').classList.toggle('disabled', !enabled); showToast(`${name}: ${enabled?'включён':'выключен'}`); }
+      });
+    });
+  } catch(e) {}
+}
+
+async function refreshContext(){
+  try {
+    const resp = await fetch('/api/context');
+    const data = await resp.json();
+    const pct = data.token_limit ? Math.min(100, (data.total_tokens / data.token_limit) * 100) : 0;
+    document.getElementById('ctx-label').textContent = `контекст: ${data.total_tokens.toLocaleString()} / ${data.token_limit.toLocaleString()} (${pct.toFixed(1)}%)`;
+    document.getElementById('ctx-fill').style.width = pct + '%';
+  } catch(e){}
+}
+
+async function refreshStatus(){
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    modelPill.textContent = data.model || '—';
+  } catch(e){}
+}
+
+async function loadHistory(){
+  try {
+    const resp = await fetch('/api/history');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const msgs = data.messages || [];
+    if (!msgs.length) return;
+    hideEmptyState();
+    for (const m of msgs) addMessage(m.role === 'user' ? 'user' : 'assistant', m.text);
+  } catch(e){}
+}
+
+loadTools();
+loadHistory();
+refreshContext();
+refreshStatus();
+setInterval(refreshContext, 8000);
+</script>
+</body>
+</html>
